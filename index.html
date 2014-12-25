@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta http-equiv="content-type" content="text/html; charset=utf-8"/>
+	<title>Infinite scroll development</title>
+	<script src="http://code.jquery.com/jquery-1.11.2.min.js"></script>
+	<script src="http://code.jquery.com/qunit/qunit-1.16.0.js"></script>
+	<script src="http://imakewebthings.github.io/jquery-waypoints/waypoints.min.js"></script>
+	<script src="http://blueimp.github.io/JavaScript-MD5/js/md5.min.js"></script>
+	<script src="http://jonobr1.github.io/two.js/third-party/two.js"></script>
+	<script src="http://jashkenas.github.io/underscore/underscore-min.js"></script>
+	<script src="./main.js"></script>
+	<link rel="stylesheet" type="text/css" href="http://yui.yahooapis.com/3.18.1/build/cssreset/cssreset-min.css">
+	<link rel="stylesheet" href="http://code.jquery.com/qunit/qunit-1.16.0.css">
+	<link rel="stylesheet" href="./main.css">
+</head>
+<body>
+
+	<div class="cases"></div>
+
+	<div class="wrapper">
+		<div id="draw-shapes"></div>
+		<div class="col_1">
+			<div class="header">Client</div>
+			<div class="box"></div>
+			<div class="box box_frame">
+				<div class="fake"></div>
+			</div>
+		</div>
+		<div class="col_2"></div>
+		<div class="col_3">
+			<div class="cases_link">Сценарии</div>
+			<div class="header">Server</div>
+			<div class="box"></div>
+			<div class="box box_frame">
+				<div class="fake"></div>
+			</div>
+		</div>
+		<div class="shadow shadow_top"></div>
+		<div class="shadow shadow_bottom"></div>
+	</div>
+
+	<div class="tests">
+		<div class="run-tests">
+			<button disabled="disabled">Запустить тесты</button>
+			<button disabled="disabled">Сгенерировать новые тесты</button>
+			<button disabled="disabled">—</button>
+		</div>
+		<div class="qunit">
+			<div class="close">&times;</div>
+			<div id="qunit"></div>
+			<div id="qunit-fixture"></div>
+		</div>
+	</div>
+
+</body>
+</html>
