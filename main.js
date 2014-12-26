@@ -305,6 +305,8 @@ $(function () {
 
 			var _unique_id_counter = 0;
 
+			var _resolved = new $.Deferred().resolve();
+
 			function getColorByOffset (offset) {
 				var colors = ["#FEC375", "#EA8484", "#737610", "#3B8C20", "#FF3002",
 					"#9ECEC8", "#CD2158", "#CCB044", "#B4D9EA", "#F350C8"];
@@ -346,42 +348,42 @@ $(function () {
 					args.push({ id: getUniqueId(), color: "#0DFCF0" });
 				}
 				_items.splice.apply(_items, args);
-				return new $.Deferred().resolve();
+				return _resolved;
 			}
 
 			function unshift (count) {
 				while (count--) {
 					_items.unshift({ id: getUniqueId(), color: "#F9F637" });
 				}
-				return new $.Deferred().resolve();
+				return _resolved;
 			}
 
 			function push (count) {
 				while (count--) {
 					_items.push({ id: getUniqueId(), color: "#3EE036" });
 				}
-				return new $.Deferred().resolve();
+				return _resolved;
 			}
 
 			function shift (count) {
 				while (count--) {
 					_items.shift();
 				}
-				return new $.Deferred().resolve();
+				return _resolved;
 			}
 
 			function pop (count) {
 				while (count--) {
 					_items.pop();
 				}
-				return new $.Deferred().resolve();
+				return _resolved;
 			}
 
 			function destroy () {
 				_items.length = 0;
 			}
 
-			var count_items = _START_ITEMS_COUNT;
+			var count_items = _START_ITEMS_COUNT + 0;
 			while (count_items--) {
 				_items.push({ id: getUniqueId(), color: getColorByOffset(count_items) });
 			}
@@ -595,7 +597,7 @@ $(function () {
 				commands.exec(client_list, server_list, _steps[index]);
 			}
 
-			function getCommantsHtml () {
+			function createCommandsHtml () {
 				var str = "";
 				_.each(_steps, function (item, index) {
 					var title = commands.getTitle(_server_list_options, _loader_options, item);
@@ -627,7 +629,7 @@ $(function () {
 					.empty();
 			}
 
-			_$cases.prop("innerHTML", getCommantsHtml());
+			_$cases.prop("innerHTML", createCommandsHtml());
 
 			_$cases_link.bind("mouseover", onLinkMouseOver);
 
