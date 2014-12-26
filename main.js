@@ -306,8 +306,8 @@ $(function () {
 			var _unique_id_counter = 0;
 
 			function getColorByOffset (offset) {
-				var colors = ["#FEC375", "#D66FDA", "#737610", "#3B8C20", "#FF3002",
-					"#CD2158", "#9ECEC8", "#CCB044", "#B4D9EA", "#F350C8"];
+				var colors = ["#FEC375", "#EA8484", "#737610", "#3B8C20", "#FF3002",
+					"#9ECEC8", "#CD2158", "#CCB044", "#B4D9EA", "#F350C8"];
 				return colors[offset % 10];
 			}
 
@@ -341,37 +341,37 @@ $(function () {
 			}
 
 			function splice (start, deleteCount, count) {
-				var items = [];
-				for (var i=start; i<start + count; i++) {
-					items.push({ id: getUniqueId(), color: "#0DFCF0" });
+				var args = [start, deleteCount];
+				while (count--) {
+					args.push({ id: getUniqueId(), color: "#0DFCF0" });
 				}
-				_items.splice.apply(_items, [start, deleteCount].concat(items));
+				_items.splice.apply(_items, args);
 				return new $.Deferred().resolve();
 			}
 
 			function unshift (count) {
-				for (var i=0; i<count; i++) {
+				while (count--) {
 					_items.unshift({ id: getUniqueId(), color: "#F9F637" });
 				}
 				return new $.Deferred().resolve();
 			}
 
 			function push (count) {
-				for (var i=0; i<count; i++) {
+				while (count--) {
 					_items.push({ id: getUniqueId(), color: "#3EE036" });
 				}
 				return new $.Deferred().resolve();
 			}
 
 			function shift (count) {
-				for (var i=0; i<count; i++) {
+				while (count--) {
 					_items.shift();
 				}
 				return new $.Deferred().resolve();
 			}
 
 			function pop (count) {
-				for (var i=0; i<count; i++) {
+				while (count--) {
 					_items.pop();
 				}
 				return new $.Deferred().resolve();
@@ -381,8 +381,9 @@ $(function () {
 				_items.length = 0;
 			}
 
-			for (var i = 0, l = _START_ITEMS_COUNT; i < l; i++) {
-				_items.push({ id: getUniqueId(), color: getColorByOffset(i) });
+			var count_items = _START_ITEMS_COUNT;
+			while (count_items--) {
+				_items.push({ id: getUniqueId(), color: getColorByOffset(count_items) });
 			}
 
 			return {
