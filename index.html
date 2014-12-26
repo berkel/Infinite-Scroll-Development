@@ -10,29 +10,27 @@
 	<script src="http://jonobr1.github.io/two.js/third-party/two.js"></script>
 	<script src="http://jashkenas.github.io/underscore/underscore-min.js"></script>
 	<script src="./main.js"></script>
-	<link rel="stylesheet" type="text/css" href="http://yui.yahooapis.com/3.18.1/build/cssreset/cssreset-min.css">
-	<link rel="stylesheet" href="http://code.jquery.com/qunit/qunit-1.16.0.css">
-	<link rel="stylesheet" href="./main.css">
+	<link rel="stylesheet" type="text/css" href="http://yui.yahooapis.com/3.18.1/build/cssreset/cssreset-min.css"/>
+	<link rel="stylesheet" type="text/css" href="http://code.jquery.com/qunit/qunit-1.16.0.css"/>
+	<link rel="stylesheet" type="text/css" href="./main.css"/>
 </head>
 <body>
 
-	<div class="cases"></div>
-
-	<div class="wrapper">
-		<div id="draw-shapes"></div>
+	<div class="app js-app">
+		<div class="canvas js-canvas"></div>
 		<div class="col_1">
 			<div class="header">Client</div>
-			<div class="box"></div>
-			<div class="box box_frame">
-				<div class="fake"></div>
+			<div class="box js-client_list"></div>
+			<div class="box box_frame js-client_list_frame">
+				<div class="fake js-client_list_placeholder"></div>
 			</div>
 		</div>
 		<div class="col_2"></div>
 		<div class="col_3">
-			<div class="cases_link">Сценарии</div>
+			<div class="commands_link js-command_link">Сценарии</div>
 			<div class="header">Server</div>
-			<div class="box"></div>
-			<div class="box box_frame">
+			<div class="box js-server_list"></div>
+			<div class="box box_frame js-server_list_frame">
 				<div class="fake"></div>
 			</div>
 		</div>
@@ -40,15 +38,17 @@
 		<div class="shadow shadow_bottom"></div>
 	</div>
 
+	<div class="commands js-commands"></div>
+
 	<div class="tests">
-		<div class="run-tests">
-			<button disabled="disabled">Запустить тесты</button>
-			<button disabled="disabled">Сгенерировать новые тесты</button>
-			<button disabled="disabled">—</button>
+		<div class="run_tests">
+			<button disabled="disabled" class="js-run_saved_tests_link">Запустить тесты</button>
+			<button disabled="disabled" class="js-run_auto_tests_link">Сгенерировать новые тесты</button>
+			<button disabled="disabled" class="js-run_one_test_link">—</button>
 		</div>
 		<div class="qunit">
-			<div class="close">&times;</div>
-			<div id="qunit"></div>
+			<div class="close js-tests_hide_link">&times;</div>
+			<div id="qunit" class="js-qunit"></div>
 			<div id="qunit-fixture"></div>
 		</div>
 	</div>

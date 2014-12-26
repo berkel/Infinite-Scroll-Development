@@ -2,7 +2,7 @@ html, body {
 	font: 13px Arial, Helvetica, sans-serif;
 }
 
-.wrapper {
+.app {
 	position: relative;
 	width: 100%;
 }
@@ -65,17 +65,6 @@ html, body {
 	-webkit-text-stroke-color: #438caf;
 }
 
-.cases_link {
-	position: absolute;
-	top: 60px;
-	right: 20%;
-	color: #53B3E0;
-	font-size: 15px;
-	border-bottom: 1px dashed #53B3E0;
-	cursor: pointer;
-	display: none;
-}
-
 .box {
 	width: 50%;
 	left: 25%;
@@ -101,6 +90,7 @@ html, body {
 	border-radius: 4px;
 	height: 100%;
 	position: relative;
+	box-shadow: inset 0 0 1px 0 rgba(50, 50, 50, 0.75);
 }
 
 .item_id, .item_offset {
@@ -136,11 +126,11 @@ html, body {
 	background: linear-gradient(to top, rgba(255,255,255,1) 0%,rgba(255,255,255,1) 20px,rgba(255,255,255,0.5) 60%,rgba(255,255,255,0) 100%);
 }
 
-#draw-shapes {
+.canvas {
 	position: absolute;
 }
 
-.cases {
+.commands {
 	position: absolute;
 	z-index: 2;
 	opacity: 0.8;
@@ -156,18 +146,21 @@ html, body {
 	margin-left: 10px;
 }
 
-.scenario {
+.commands_link {
+	position: absolute;
+	top: 60px;
+	right: 20%;
+	color: #53B3E0;
+	font-size: 15px;
+	border-bottom: 1px dashed #53B3E0;
+	cursor: pointer;
+}
+
+.command {
 	margin-bottom: 20px;
 }
 
-.scenario_link {
-	color: #e09d3b;
-	border-bottom: 1px dashed #e09d3b;
-	cursor: pointer;
-	margin-left: 20px;
-}
-
-.scenario_num {
+.command_index {
 	display: inline-block;
 	width: 20px;
 	margin-left: -20px;
@@ -175,7 +168,14 @@ html, body {
 	margin-right: 5px;
 }
 
-.tests .run-tests {
+.command_link {
+	color: #e09d3b;
+	border-bottom: 1px dashed #e09d3b;
+	cursor: pointer;
+	margin-left: 20px;
+}
+
+.tests .run_tests {
 	position: absolute;
 	top: 10px;
 	left: 10px;
@@ -205,7 +205,7 @@ html, body {
 	right: 0;
 	font-size: 50px;
 	color: #2B81AF;
-	margin: -17px -38px 0 0;
+	margin: -49px -36px 0 0;
 	cursor: pointer;
 	display: none;
 }

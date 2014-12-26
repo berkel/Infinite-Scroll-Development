@@ -1,12 +1,18 @@
 $(function () {
 
-	function addItem ($list, offset, item) {
-		function createItem (item, offset) {
-			var $item = $('<div class="item_wrapper" style="height: ' + ITEM_HEIGHT + 'px;" data-id="' + item.id + '"><div class="item"><div class="item_id">' + item.id + '</div><div class="item_offset">' + offset + '</div></div></div>');
-			$item.find(".item").css("backgroundColor", item.color);
-			return $item;
-		}
-		$list.append(createItem(item, offset));
+	var ITEM_HEIGHT = 29;
+	var ITEMS_IN_VIEWPORT_COUNT = 6;
+
+	var $wrapper = $(".js-app");
+
+	var is_one_test = /[?&]testId=/.test(location.search);
+
+	function createItemsHtml (items) {
+		var str = "";
+		_.each(items, function (item, index) {
+			str += '<div class="item_wrapper js-item_wrapper" style="height: ' + ITEM_HEIGHT + 'px;" data-id="' + item.id + '"><div class="item" style="background-color: ' + item.color + ';"><div class="item_id">' + item.id + '</div><div class="item_offset">' + index + '</div></div></div>';
+		});
+		return str;
 	}
 
 	function updateWrapperHeight () {
@@ -16,17 +22,134 @@ $(function () {
 		) + 200);
 	}
 
+	function getRandomInt (min, max) {
+		return Math.floor(Math.random() * (max - min + 1)) + min;
+	}
 
-	function Lines () {
+
+	var Commands = function () {
+		var _commands = {
+			load_next: {
+				title: function (server_list_options, loader_options) {
+					return "подгружаем с сервера (следующих — " + loader_options.next_load_count + ", предыдущих — " + loader_options.prev_load_count + ")";
+				},
+				exec: function (client_list) {
+					return client_list.loadNext();
+				}
+			},
+			splice: {
+				title: function (server_list_options, loader_options, item) {
+					return "удалили — " + item.deleteCount + ", добавили — " + item.count + " (с " + item.start + " элемента)";
+				},
+				exec: function (client_list, server_list, item) {
+					return server_list.splice(item.start, item.deleteCount, item.count);
+				}
+			},
+			insert: {
+				title: function (server_list_options, loader_options, item) {
+					return "добавили — " + item.count + " (с " + item.start + " элемента)";
+				},
+				exec: function (client_list, server_list, item) {
+					return server_list.splice(item.start, 0, item.count);
+				}
+			},
+			delete: {
+				title: function (server_list_options, loader_options, item) {
+					return "удалили — " + item.count + " (с " + item.start + " элемента)";
+				},
+				exec: function (client_list, server_list, item) {
+					return server_list.splice(item.start, item.count, 0);
+				}
+			},
+			unshift: {
+				title: function (server_list_options, loader_options, item) {
+					return "добавляем на сервере в начало — " + item.count;
+				},
+				exec: function (client_list, server_list, item) {
+					return server_list.unshift(item.count);
+				}
+			},
+			shift: {
+				title: function (server_list_options, loader_options, item) {
+					return "удаляем на сервере с начала — " + item.count;
+				},
+				exec: function (client_list, server_list, item) {
+					return server_list.shift(item.count);
+				}
+			},
+			push: {
+				title: function (server_list_options, loader_options, item) {
+					return "добавляем на сервере в конец — " + item.count;
+				},
+				exec: function (client_list, server_list, item) {
+					return server_list.push(item.count);
+				}
+			},
+			pop: {
+				title: function (server_list_options, loader_options, item) {
+					return "удаляем на сервере с конца — " + item.count;
+				},
+				exec: function (client_list, server_list, item) {
+					return server_list.pop(item.count);
+				}
+			}
+		};
+
+		var _command_types = [];
+
+		_.each(_commands, function (value, command) {
+			_command_types.push(command);
+		});
+
+		function exec (client_list, server_list, item) {
+			return _commands[item.cmd].exec(client_list, server_list, item);
+		}
+
+		function getTitle (server_list_options, loader_options, item) {
+			return _commands[item.cmd].title(server_list_options, loader_options, item);
+		}
+
+		function getRandom () {
+			var index = getRandomInt(0, _command_types.length - 1);
+			return create(_command_types[index]);
+		}
+
+		function create (cmd) {
+			var item = { cmd: cmd };
+			if (_.indexOf(["unshift", "shift", "push", "pop"], item.cmd) !== -1) {
+				item.count = getRandomInt(0, 30);
+			} else if (item.cmd === "splice") {
+				item.start = getRandomInt(0, 30);
+				item.deleteCount = getRandomInt(0, 30);
+				item.count = getRandomInt(0, 30);
+			} else if (item.cmd === "insert" || item.cmd === "delete") {
+				item.start = getRandomInt(1, 30);
+				item.count = getRandomInt(1, 30);
+			}
+			return item;
+		}
+
+		return {
+			exec: exec,
+			getTitle: getTitle,
+			getRandom: getRandom,
+			create: create
+		};
+	};
+
+
+	var Lines = function () {
 
 		var _$window = $(window);
 
-		var _two = new Two().appendTo($("#draw-shapes").get(0));
+		var _$canvas = $(".js-canvas");
+
+		var _two = new Two().appendTo(_$canvas.get(0));
 		var _lines = [];
 
 		function updateGeometry () {
-			_two.width = $wrapper.width();
-			_two.height = $wrapper.height();
+			_two.width = $wrapper.prop("offsetWidth");
+			_two.height = $wrapper.prop("offsetHeight");
 		}
 
 		function clear () {
@@ -41,22 +164,23 @@ $(function () {
 
 			updateGeometry();
 
-			$.each(ClientList.$list.find(".item_wrapper"), function () {
-				var item = { elem: $(this) };
-				item.offset = item.elem.offset();
-				item.height = item.elem.prop("offsetHeight");
-				item.width = item.elem.prop("offsetWidth");
+			_.each(ClientList.$list.find(".js-item_wrapper"), function (elem) {
 
-				$.each(ServerList.$list.find('.item_wrapper[data-id="' + item.elem.data("id") + '"]'), function () {
-					var server_item = { elem: $(this) };
-					server_item.offset = server_item.elem.offset();
-					server_item.height = server_item.elem.prop("offsetHeight");
-					server_item.width = server_item.elem.prop("offsetWidth");
+				var item = { $elem: $(elem) };
+				item.offset = item.$elem.offset();
+				item.width = item.$elem.prop("offsetWidth");
+				item.height = item.$elem.prop("offsetHeight");
+				item.position = { x: item.offset.left + item.width + 2, y: item.offset.top + (item.height / 2)};
 
-					var position1 = { x: item.offset.left + item.width + 2, y: item.offset.top + (item.height / 2)};
-					var position2 = { x: server_item.offset.left - 2, y: server_item.offset.top + (server_item.height / 2)};
+				_.each(ServerList.$list.find('.js-item_wrapper[data-id="' + item.$elem.data("id") + '"]'), function (elem) {
 
-					var line = _two.makeLine(position1.x, position1.y, position2.x, position2.y);
+					var server_item = { $elem: $(elem) };
+					server_item.offset = server_item.$elem.offset();
+					server_item.width = server_item.$elem.prop("offsetWidth");
+					server_item.height = server_item.$elem.prop("offsetHeight");
+					server_item.position = { x: server_item.offset.left - 2, y: server_item.offset.top + (server_item.height / 2)};
+
+					var line = _two.makeLine(item.position.x, item.position.y, server_item.position.x, server_item.position.y);
 					line.stroke = "#FEC375";
 
 					_lines.push(line);
@@ -70,208 +194,219 @@ $(function () {
 			lines.redraw();
 		}
 
+		var redrawDebounce = _.debounce(redraw, 5);
+
 		_$window.bind("resize", onResize);
 
 		return {
-			redraw: redraw
+			redraw: redraw,
+			redrawDebounce: redrawDebounce
 		};
-	}
+	};
 
 
-	function ClientList (loader) {
+	var ClientList = (function () {
 
-		if (ClientList.destroy) {
-			ClientList.destroy();
-		}
-		ClientList.destroy = destroy;
+		var _prev_instance_destroy;
 
 		var _items = [];
 
-		var _$list = ClientList.$list;
-		var _$list_frame = ClientList.$list_frame;
+		var _$list = $(".js-client_list", $wrapper);
+		var _$list_frame = $(".js-client_list_frame", $wrapper);
+		var _$list_frame_fake = _$list_frame.find(".js-client_list_placeholder");
 
 		_$list.add(_$list_frame).css("height", ITEMS_IN_VIEWPORT_COUNT * ITEM_HEIGHT);
 
-		_$list.empty();
-
 		function observe () {
-			_$list.empty();
-			_items.forEach(function (item, index) {
-				addItem(_$list, index, item);
-			});
+			_$list.prop("innerHTML", createItemsHtml(_items));
 			updateWrapperHeight();
-			lines.redraw();
-
-			_$list_frame.find(".fake").css("height", _items.length * ITEM_HEIGHT);
+			lines.redrawDebounce();
+			_$list_frame_fake.css("height", _items.length * ITEM_HEIGHT);
 		}
 
-		function getItems () {
-			return _items;
-		}
+		Object.observe(_items, observe);
 
-		function getIds () {
-			return _items.map(function (item) {
-				return item.id;
-			});
-		}
+		function _result (loader) {
 
-		function loadNext () {
-			return loader.getNextItems().done(function (items) {
-				items.forEach(function (item) {
-					_items.push(item);
+			if (_prev_instance_destroy) {
+				_prev_instance_destroy();
+			}
+			_prev_instance_destroy = destroy;
+
+			function getItems () {
+				return _items;
+			}
+
+			function getIds () {
+				return _items.map(function (item) {
+					return item.id;
 				});
-			});
+			}
+
+			function getLoader () {
+				return loader;
+			}
+
+			function loadNext () {
+				return loader.getNextItems().done(function (items) {
+					_.each(items, function (item) {
+						_items.push(item);
+					});
+				});
+			}
+
+			function destroy () {
+				_items.length = 0;
+			}
+
+			return {
+				getItems: getItems,
+				getIds: getIds,
+				getLoader: getLoader,
+
+				loadNext: loadNext
+			};
 		}
 
-		function destroy () {
-			_$list.empty();
-			Object.unobserve(_items, observe);
-		}
+		_result.$list = _$list;
+		_result.$list_frame = _$list_frame;
 
-		Object.observe(_items, observe);
-
-		return {
-			$list: _$list,
-			$list_frame: _$list_frame,
-
-			getItems: getItems,
-
-			getIds: getIds,
-
-			loadNext: loadNext
-		};
-	}
-	ClientList.$list = $(".col_1 .box:eq(0)");
-	ClientList.$list_frame = $(".col_1 .box:eq(1)");
+		return _result;
+	})();
 
 
-	function ServerList (options) {
+	var ServerList = (function () {
 
-		if (ServerList.destroy) {
-			ServerList.destroy();
-		}
-		ServerList.destroy = destroy;
-
-		var _START_ITEMS_COUNT = options.start_items_count;
+		var _prev_instance_destroy;
 
 		var _items = [];
-		var _unique_id_counter = 0;
 
-		var _$list = ServerList.$list;
-		var _$list_frame = ServerList.$list_frame;
+		var _$list = $(".js-server_list", $wrapper);
+		var _$list_frame = $(".js-server_list_frame", $wrapper);
 
 		_$list.add(_$list_frame).css("height", ITEMS_IN_VIEWPORT_COUNT * ITEM_HEIGHT);
 
-		_$list.empty();
-
 		function observe () {
-			_$list.empty();
-			_items.forEach(function (item, index) {
-				addItem(_$list, index, item);
-			});
+			_$list.prop("innerHTML", createItemsHtml(_items));
 			updateWrapperHeight();
-			lines.redraw();
-		}
-
-		function getColorByOffset (offset) {
-			var colors = ["#FEC375", "#D66FDA", "#737610", "#3B8C20", "#FF3002",
-				"#CD2158", "#9ECEC8", "#CCB044", "#B4D9EA", "#F350C8"];
-			return colors[offset % 10];
-		}
-
-		function getUniqueId () {
-			return md5(++_unique_id_counter).substr(0, 7);
-		}
-
-		function getItems () {
-			return _items;
-		}
-
-		function getRange (start, end) {
-			var deferred = new $.Deferred();
-			var items = _items.slice(start, end).map(function (item) {
-				return $.extend({}, item);
-			});
-			setTimeout(function () {
-				deferred.resolve(items);
-			}, 0);
-			return deferred.promise();
-		}
-
-		function getIds () {
-			return _items.map(function (item) {
-				return item.id;
-			});
-		}
-
-		function splice (start, deleteCount, count) {
-			var items = [];
-			for (var i=start; i<start + count; i++) {
-				items.push({ id: getUniqueId(), color: "#0DFCF0" });
-			}
-			_items.splice.apply(_items, [start, deleteCount].concat(items));
-			return new $.Deferred().resolve();
-		}
-
-		function unshift (count) {
-			for (var i=0; i<count; i++) {
-				_items.unshift({ id: getUniqueId(), color: "#F9F637" });
-			}
-			return new $.Deferred().resolve();
-		}
-
-		function push (count) {
-			for (var i=0; i<count; i++) {
-				_items.push({ id: getUniqueId(), color: "#3EE036" });
-			}
-			return new $.Deferred().resolve();
-		}
-
-		function shift (count) {
-			for (var i=0; i<count; i++) {
-				_items.shift();
-			}
-			return new $.Deferred().resolve();
-		}
-
-		function pop (count) {
-			for (var i=0; i<count; i++) {
-				_items.pop();
-			}
-			return new $.Deferred().resolve();
-		}
-
-		function destroy () {
-			_$list.empty();
-			Object.unobserve(_items, observe);
+			lines.redrawDebounce();
 		}
 
 		Object.observe(_items, observe);
 
-		for (var i = 0, l = _START_ITEMS_COUNT; i < l; i++) {
-			_items.push({ id: getUniqueId(), color: getColorByOffset(i) });
+		function _result (options) {
+
+			if (_prev_instance_destroy) {
+				_prev_instance_destroy();
+			}
+			_prev_instance_destroy = destroy;
+
+			var _START_ITEMS_COUNT = options.start_items_count;
+
+			var _unique_id_counter = 0;
+
+			function getColorByOffset (offset) {
+				var colors = ["#FEC375", "#D66FDA", "#737610", "#3B8C20", "#FF3002",
+					"#CD2158", "#9ECEC8", "#CCB044", "#B4D9EA", "#F350C8"];
+				return colors[offset % 10];
+			}
+
+			function getUniqueId () {
+				return md5(++_unique_id_counter).substr(0, 7);
+			}
+
+			function getItems () {
+				return _items;
+			}
+
+			function getOptions () {
+				return options;
+			}
+
+			function getRange (start, end) {
+				var deferred = new $.Deferred();
+				var items = _items.slice(start, end).map(function (item) {
+					return _.extend({}, item);
+				});
+				setTimeout(function () {
+					deferred.resolve(items);
+				}, 0);
+				return deferred.promise();
+			}
+
+			function getIds () {
+				return _items.map(function (item) {
+					return item.id;
+				});
+			}
+
+			function splice (start, deleteCount, count) {
+				var items = [];
+				for (var i=start; i<start + count; i++) {
+					items.push({ id: getUniqueId(), color: "#0DFCF0" });
+				}
+				_items.splice.apply(_items, [start, deleteCount].concat(items));
+				return new $.Deferred().resolve();
+			}
+
+			function unshift (count) {
+				for (var i=0; i<count; i++) {
+					_items.unshift({ id: getUniqueId(), color: "#F9F637" });
+				}
+				return new $.Deferred().resolve();
+			}
+
+			function push (count) {
+				for (var i=0; i<count; i++) {
+					_items.push({ id: getUniqueId(), color: "#3EE036" });
+				}
+				return new $.Deferred().resolve();
+			}
+
+			function shift (count) {
+				for (var i=0; i<count; i++) {
+					_items.shift();
+				}
+				return new $.Deferred().resolve();
+			}
+
+			function pop (count) {
+				for (var i=0; i<count; i++) {
+					_items.pop();
+				}
+				return new $.Deferred().resolve();
+			}
+
+			function destroy () {
+				_items.length = 0;
+			}
+
+			for (var i = 0, l = _START_ITEMS_COUNT; i < l; i++) {
+				_items.push({ id: getUniqueId(), color: getColorByOffset(i) });
+			}
+
+			return {
+				getItems: getItems,
+				getRange: getRange,
+				getIds: getIds,
+				getOptions: getOptions,
+
+				splice: splice,
+				unshift: unshift,
+				push: push,
+				shift: shift,
+				pop: pop
+			};
 		}
 
-		return {
-			$list: _$list,
-			$list_frame: _$list_frame,
+		_result.$list = _$list;
+		_result.$list_frame = _$list_frame;
 
-			getItems: getItems,
-			getRange: getRange,
-			getIds: getIds,
-
-			splice: splice,
-			unshift: unshift,
-			push: push,
-			shift: shift,
-			pop: pop
-		};
-	}
-	ServerList.$list = $(".col_3 .box:eq(0)");
-	ServerList.$list_frame = $(".col_3 .box:eq(1)");
+		return _result;
+	})();
 
 
-	function Loader (server_list, options) {
+	var Loader = function (server_list, options) {
 
 		var _PREV_LOAD_COUNT = options.prev_load_count;
 		var _NEXT_LOAD_COUNT = options.next_load_count;
@@ -280,15 +415,15 @@ $(function () {
 		var _ids = {};
 
 		function getFromServer (offset, count) {
-//				console.log("getFromServer", "offset:", offset, "count:", count);
+//			console.log("getFromServer", "offset:", offset, "count:", count);
 			return server_list.getRange(offset, offset + count);
 		}
 
 		function addLoadedItems (items, loaded_items) {
 
-			loaded_items.forEach(function (loaded_item) {
+			_.each(loaded_items, function (loaded_item) {
 
-//					console.log(loaded_item.id, loaded_item.id in _ids);
+//				console.log(loaded_item.id, loaded_item.id in _ids);
 
 				if (loaded_item.id in _ids) {
 
@@ -314,15 +449,15 @@ $(function () {
 			var normalize_prev_load_count = _PREV_LOAD_COUNT - (normalize_offset_for_server - offset_for_server);
 			var count_for_server = normalize_prev_load_count + _NEXT_LOAD_COUNT;
 
-//				console.log("_current_offset before", _current_offset);
+//			console.log("_current_offset before", _current_offset);
 
 			getFromServer(normalize_offset_for_server, count_for_server).done(function (loaded_items) {
 
-				_current_offset += Math.min(count_for_server, loaded_items.length) - normalize_prev_load_count;
+				_current_offset += loaded_items.length - normalize_prev_load_count;
 
 				deferred.resolve(loaded_items, loaded_items.length === count_for_server);
 
-//					console.log("_current_offset after", _current_offset);
+//				console.log("_current_offset after", _current_offset);
 			});
 
 			return deferred.promise();
@@ -348,176 +483,174 @@ $(function () {
 			return deferred.promise();
 		}
 
-		return {
-			getNextItems: getNextItems
-		};
-	}
-
-
-	function Waypoint (client_list) {
-
-		if (Waypoint.destroy) {
-			Waypoint.destroy();
+		function getOptions () {
+			return options;
 		}
-		Waypoint.destroy = destroy;
 
-		var _$list = client_list.$list;
-		var _$list_frame = client_list.$list_frame;
+		return {
+			getNextItems: getNextItems,
+			getOptions: getOptions
+		};
+	};
 
-		var _waypoint_options = {
-			context: _$list_frame,
-			handler: function () {
 
-				client_list.loadNext().done(function (items, has_next) {
+	var Waypoint = (function () {
 
-					destroyWaypoint();
+		var _prev_instance_destroy;
 
-					if (has_next) {
-						_$list_frame.waypoint(_waypoint_options);
-					}
-				});
-			},
+		var _$list = ClientList.$list;
+		var _$list_frame = ClientList.$list_frame;
 
-			offset: function () {
-				var height = _$list_frame.height();
-				var offset = _$list_frame.scrollTop();
-				var count = client_list.getItems().length;
-				return -((count * ITEM_HEIGHT) - height - offset - (ITEM_HEIGHT * 3));
+		return function (client_list) {
+
+			if (_prev_instance_destroy) {
+				_prev_instance_destroy();
 			}
-		};
+			_prev_instance_destroy = destroy;
 
-		function run () {
-			destroyWaypoint();
-			_$list_frame.waypoint(_waypoint_options);
+			var _waypoint_options = {
+				context: _$list_frame,
+				handler: function () {
+
+					client_list.loadNext().done(function (items, has_next) {
+
+						destroyWaypoint();
+
+						if (has_next) {
+							_$list_frame.waypoint(_waypoint_options);
+						}
+					});
+				},
+
+				offset: function () {
+					var height = _$list_frame.height();
+					var offset = _$list_frame.scrollTop();
+					var count = client_list.getItems().length;
+					return -((count * ITEM_HEIGHT) - height - offset - (ITEM_HEIGHT * 3));
+				}
+			};
+
+			function run () {
+				destroyWaypoint();
+				_$list_frame.waypoint(_waypoint_options);
+			}
+
+			function onScroll () {
+				_$list.css("marginTop", -_$list_frame.scrollTop());
+				lines.redraw();
+				runDebounce();
+			}
+
+			function destroyWaypoint () {
+				_$list_frame.waypoint("destroy");
+			}
+
+			function destroy () {
+				destroyWaypoint();
+				_$list_frame.unbind("scroll", onScroll);
+			}
+
+			var runDebounce = _.debounce(run, 100);
+
+			_$list_frame.bind("scroll", onScroll);
+
+			return {
+				run: run
+			};
 		}
-
-		function onScroll () {
-			_$list.css("marginTop", -_$list_frame.scrollTop());
-			lines.redraw();
-			runDebounce();
-		}
-
-		function destroyWaypoint () {
-			_$list_frame.waypoint("destroy");
-		}
-
-		function destroy () {
-			destroyWaypoint();
-			_$list_frame.unbind("scroll", onScroll);
-		}
-
-		var runDebounce = _.debounce(run, 100);
-
-		_$list_frame.bind("scroll", onScroll);
-
-		return {
-			run: run
-		};
-	}
+	})();
 
 
-	function Scenario (server_list) {
+	var Scenario = (function () {
 
-		var _$cases_link = $(".cases_link");
-		var _$cases = $(".cases");
+		var _prev_instance_destroy;
 
-		var _scenarios = [
-			  { add: { prepend: 5 } }
-			, { add: { append: 5 } }
-			, { add: { prepend: 5, append: 5 } }
-			, { add: { prepend: 10 } }
-			, { add: { append: 10 } }
-			, { add: { prepend: 10, append: 10 } }
-			, { remove: { prepend: 5 } }
-			, { remove: { append: 5 } }
-			, { remove: { prepend: 5, append: 5 } }
-			, { remove: { prepend: 10 } }
-			, { remove: { append: 10 } }
-			, { remove: { prepend: 10, append: 10 } }
+		var _$cases_link = $(".js-command_link");
+		var _$cases = $(".js-commands");
+
+		var _steps = [
+			  { cmd: "unshift", count: 5 }
+			, { cmd: "unshift", count: 10 }
+			, { cmd: "push", count: 5 }
+			, { cmd: "push", count: 10 }
+			, { cmd: "shift", count: 5 }
+			, { cmd: "shift", count: 10 }
+			, { cmd: "pop", count: 5 }
+			, { cmd: "pop", count: 10 }
 		];
 
-		function runScenario (index) {
-			var scenario = _scenarios[index];
-			if (scenario.add) {
-				if (scenario.add.prepend) {
-					server_list.unshift(scenario.add.prepend);
-				}
-				if (scenario.add.append) {
-					server_list.push(scenario.add.append);
-				}
-			}
-			if (scenario.remove) {
-				if (scenario.remove.prepend) {
-					server_list.shift(scenario.remove.prepend);
-				}
+		return function (client_list, server_list) {
 
-				if (scenario.remove.append) {
-					server_list.pop(scenario.remove.append);
-				}
+			if (_prev_instance_destroy) {
+				_prev_instance_destroy();
 			}
+			_prev_instance_destroy = destroy;
+
+			var _server_list_options = server_list.getOptions();
+			var _loader = client_list.getLoader();
+			var _loader_options = _loader.getOptions();
+
+			function runCommand (index) {
+				commands.exec(client_list, server_list, _steps[index]);
+			}
+
+			function getCommantsHtml () {
+				var str = "";
+				_.each(_steps, function (item, index) {
+					var title = commands.getTitle(_server_list_options, _loader_options, item);
+					str += '<div class="command"><span class="command_index">' + (index + 1) + '.</span>' + title + '<span class="command_link js-link" data-index="' + index + '">выполнить</span></div>';
+				});
+				return str;
+			}
+
+			function onLinkMouseOver () {
+				_$cases.show();
+			}
+
+			function onRunCommandClick (evt) {
+				var $target = $(evt.currentTarget);
+				var index = $target.data("index");
+				runCommand(index);
+				_$cases.hide();
+			}
+
+			function onLinkMouseLeave () {
+				_$cases.hide();
+			}
+
+			function destroy () {
+				_$cases_link.unbind("mouseover", onLinkMouseOver);
+				_$cases
+					.unbind("mouseleave", onLinkMouseLeave)
+					.undelegate(".js-link", "click", onRunCommandClick)
+					.empty();
+			}
+
+			_$cases.prop("innerHTML", getCommantsHtml());
+
+			_$cases_link.bind("mouseover", onLinkMouseOver);
+
+			_$cases
+				.bind("mouseleave", onLinkMouseLeave)
+				.delegate(".js-link", "click", onRunCommandClick);
 		}
-
-		function addScenario (index, item) {
-			var str = [], tmp = [];
-			if (item.add) {
-				if (item.add.prepend) {
-					tmp.push("в начало - " + item.add.prepend);
-				}
-				if (item.add.append) {
-					tmp.push("в конец - " + item.add.append);
-				}
-				str.push("добавить: " + tmp.join(", "));
-			}
-			tmp.length = 0;
-			if (item.remove) {
-				if (item.remove.prepend) {
-					tmp.push("с начала - " + item.remove.prepend);
-				}
-				if (item.remove.append) {
-					tmp.push("с конца - " + item.remove.append);
-				}
-				str.push("удалить: " + tmp.join(", "));
-			}
-			var $item = $('<div class="scenario"><span class="scenario_num">' + (index + 1) + '.</span>' + str.join("<br/>") + '<span class="scenario_link" data-index="' + index + '">выполнить</span></div>');
-			_$cases.append($item);
-		}
-
-		_$cases_link.mouseover(function () {
-			_$cases.show();
-		});
-
-		_$cases.mouseleave(function () {
-			_$cases.hide();
-		});
-
-		$.each(_scenarios, function (index, item) {
-			addScenario(index, item);
-		});
-
-		$(".scenario_link").click(function () {
-			var index = $(this).data("index");
-			runScenario(index);
-			_$cases.hide();
-		});
-
-		_$cases_link.show();
-	}
+	})();
 
 
-	function Tests (is_one_test) {
+	var Tests = function (is_one_test) {
 
-		$.extend(QUnit.config, {
+		_.extend(QUnit.config, {
 			reorder: false,
 			autostart: false
 		});
 
-		var _$testContainer = $(".tests .qunit");
-		var _testHideButton = { $el: $(".close", _$testContainer) };
-		var _allTestsButton = { $el: $(".run-tests button:eq(0)") };
-		var _randomTestsButton = { $el: $(".run-tests button:eq(1)") };
-		var _oneTestButton = { $el: $(".run-tests button:eq(2)") };
+		var _$testContainer = $(".js-qunit");
+		var _testHideButton = { $el: $(".js-tests_hide_link") };
+		var _allTestsButton = { $el: $(".js-run_saved_tests_link") };
+		var _randomTestsButton = { $el: $(".js-run_auto_tests_link") };
+		var _oneTestButton = { $el: $(".js-run_one_test_link") };
 
-		function Validator () {
+		var Validator = function () {
 
 			function hasDuplicate (cliens_ids) {
 				return cliens_ids.length > _.uniq(cliens_ids).length;
@@ -555,97 +688,23 @@ $(function () {
 				}
 			}
 
-			function checkLists (assert, factory, load_items, server_list_options, loader_options) {
-				checkDuplicate(assert, factory, load_items, server_list_options, loader_options);
-				checkSpace(assert, factory, load_items, server_list_options, loader_options);
+			function checkLists (assert, factory, load_items) {
+				checkDuplicate(assert, factory, load_items);
+				checkSpace(assert, factory, load_items);
 			}
 
 			return {
 				check: checkLists
 			};
-		}
+		};
 
 		var _validator = new Validator();
-
-		var _commands = {
-
-			load_next: {
-				title: function (server_list_options, loader_options) {
-					return "подгружаем с сервера (следующих — " + loader_options.next_load_count + ", предыдущих — " + loader_options.prev_load_count + ")";
-				},
-				exec: function (factory) {
-					return factory.client_list.loadNext();
-				}
-			},
-
-			splice: {
-				title: function (server_list_options, loader_options, item) {
-					return "удалили — " + item.deleteCount + ", добавили — " + item.count + " (с " + item.start + " элемента)";
-				},
-				exec: function (factory, item) {
-					return factory.server_list.splice(item.start, item.deleteCount, item.count);
-				}
-			},
-
-			insert: {
-				title: function (server_list_options, loader_options, item) {
-					return "добавили — " + item.count + " (с " + item.start + " элемента)";
-				},
-				exec: function (factory, item) {
-					return factory.server_list.splice(item.start, 0, item.count);
-				}
-			},
-
-			delete: {
-				title: function (server_list_options, loader_options, item) {
-					return "удалили — " + item.count + " (с " + item.start + " элемента)";
-				},
-				exec: function (factory, item) {
-					return factory.server_list.splice(item.start, item.count, 0);
-				}
-			},
-
-			unshift: {
-				title: function (server_list_options, loader_options, item) {
-					return "добавляем на сервере в начало — " + item.count;
-				},
-				exec: function (factory, item) {
-					return factory.server_list.unshift(item.count);
-				}
-			},
-
-			shift: {
-				title: function (server_list_options, loader_options, item) {
-					return "удаляем на сервере с начала — " + item.count;
-				},
-				exec: function (factory, item) {
-					return factory.server_list.shift(item.count);
-				}
-			},
-
-			push: {
-				title: function (server_list_options, loader_options, item) {
-					return "добавляем на сервере в конец — " + item.count;
-				},
-				exec: function (factory, item) {
-					return factory.server_list.push(item.count);
-				}
-			},
-
-			pop: {
-				title: function (server_list_options, loader_options, item) {
-					return "удаляем на сервере с конца — " + item.count;
-				},
-				exec: function (factory, item) {
-					return factory.server_list.pop(item.count);
-				}
-			}
-		};
 
 		function init (server_list_options, loader_options) {
 			var server_list = new ServerList(server_list_options);
 			var loader = new Loader(server_list, loader_options);
 			var client_list = new ClientList(loader);
+			var scenario = new Scenario(client_list, server_list);
 			var waypoint = new Waypoint(client_list);
 			return {
 				client_list: client_list,
@@ -654,7 +713,7 @@ $(function () {
 		}
 
 		function execCommand (factory, item) {
-			return _commands[item.cmd].exec(factory, item);
+			return commands.exec(factory.client_list, factory.server_list, item);
 		}
 
 		function createName (server_list_options, loader_options, steps) {
@@ -669,7 +728,7 @@ $(function () {
 			parts.push("Настройки: " + settings_parts.join(", "));
 
 			var steps_parts = [];
-			steps.forEach(function (item, index) {
+			_.each(steps, function (item, index) {
 				item.title = createStepName(server_list_options, loader_options, item);
 				steps_parts.push("\t" + (index + 1) + ". " +  item.title);
 			});
@@ -680,7 +739,7 @@ $(function () {
 		}
 
 		function createStepName (server_list_options, loader_options, item) {
-			return _commands[item.cmd].title(server_list_options, loader_options, item);
+			return commands.getTitle(server_list_options, loader_options, item);
 		}
 
 		function addTest (server_list_options, loader_options, steps) {
@@ -701,7 +760,7 @@ $(function () {
 								.done(function (load_items) {
 
 									if (item.cmd === "load_next") {
-										_validator.check(assert, factory, load_items, server_list_options, loader_options);
+										_validator.check(assert, factory, load_items);
 									}
 
 									setTimeout(function () {
@@ -722,6 +781,7 @@ $(function () {
 
 						done();
 
+
 						if (is_one_test) {
 							_oneTestButton.disabled = true;
 						}
@@ -731,41 +791,17 @@ $(function () {
 			});
 		}
 
-		function getRandomInt (min, max) {
-			return Math.floor(Math.random() * (max - min + 1)) + min;
-		}
-
-		function createCmd (cmd) {
-			var item = { cmd: cmd };
-			if (_.indexOf(["unshift", "shift", "push", "pop"], item.cmd) !== -1) {
-				item.count = getRandomInt(0, 30);
-			} else if (item.cmd === "splice") {
-				item.start = getRandomInt(0, 30);
-				item.deleteCount = getRandomInt(0, 30);
-				item.count = getRandomInt(0, 30);
-			} else if (item.cmd === "insert" || item.cmd === "delete") {
-				item.start = getRandomInt(1, 30);
-				item.count = getRandomInt(1, 30);
-			}
-			return item;
-		}
-
 		function getRandomCmds () {
-			var items = [], map = [];
+			var items = [];
 
-			items.push(createCmd("load_next"));
-
-			_.each(_commands, function (value, command) {
-				map.push(command);
-			});
+			items.push(commands.create("load_next"));
 
 			var count_commands = getRandomInt(1, 8);
 			while (count_commands--) {
-				var index = getRandomInt(0, map.length - 1);
-				items.push(createCmd(map[index]));
+				items.push(commands.getRandom());
 			}
 
-			items.push(createCmd("load_next"));
+			items.push(commands.create("load_next"));
 
 			return items;
 		}
@@ -779,7 +815,7 @@ $(function () {
 		}
 
 		function generateTests () {
-			var items = [], count_tests = 500;
+			var items = [], count_tests = 200;
 			while (count_tests--) {
 				items.push([
 					  { start_items_count: getRandomInt(0, 100) }
@@ -791,35 +827,31 @@ $(function () {
 		}
 
 		function runOneTest () {
-			runTests();
+			runSavedTests();
 		}
 
-		function runTests () {
-			var tests = getTests() || generateTests();
+		function runTests (tests) {
 			saveTests(tests);
 
-			tests.forEach(function (item) {
+			_.each(tests, function (item) {
 				addTest.apply(this, item);
 			}, this);
 
 			QUnit.start();
+		}
+
+		function runSavedTests () {
+			runTests(getTests());
 		}
 
 		function runAutoTests () {
-			var tests = generateTests();
-			saveTests(tests);
-
-			tests.forEach(function (item) {
-				addTest.apply(this, item);
-			}, this);
-
-			QUnit.start();
+			runTests(generateTests());
 		}
 
 		function onRunTestsClick () {
 			_allTestsButton.disabled = _randomTestsButton.disabled = true;
 			_testHideButton.visible = true;
-			runTests();
+			runSavedTests();
 		}
 
 		function onRunAutoTestsClick () {
@@ -829,11 +861,11 @@ $(function () {
 		}
 
 		function onTestHideClick () {
-			_$testContainer.hide();
+			_$testContainer.toggle();
 		}
 
 		function runTestButtonObserve (changes) {
-			changes.forEach(function (change) {
+			_.each(changes, function (change) {
 				var item = change.object;
 				if (change.name === "disabled") {
 					if (item.disabled) {
@@ -873,21 +905,9 @@ $(function () {
 		}
 
 		_testHideButton.$el.bind("click", onTestHideClick);
-	}
+	};
 
-
-	var ITEM_HEIGHT = 29;
-	var ITEMS_IN_VIEWPORT_COUNT = 6;
-
-	var $wrapper = $(".wrapper");
-
-	var is_one_test = /[?&]testId=/.test(location.search);
-
-	var lines = new Lines();
-	var tests = new Tests(is_one_test);
-
-	if (!is_one_test) {
-
+	function createLists () {
 		var server_list = new ServerList({
 			start_items_count: 42
 		});
@@ -896,9 +916,17 @@ $(function () {
 			next_load_count: 9
 		});
 		var client_list = new ClientList(loader);
-		var scenario = new Scenario(server_list);
+		var scenario = new Scenario(client_list, server_list);
 		var waypoint = new Waypoint(client_list);
 
 		waypoint.run();
+	}
+
+	var commands = new Commands();
+	var lines = new Lines();
+	var tests = new Tests(is_one_test);
+
+	if (!is_one_test) {
+		createLists();
 	}
 });
